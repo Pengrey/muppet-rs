@@ -1,5 +1,5 @@
 # muppet-rs
-Chrome cookie stealer leaveraging Phantom Persistence, CDP and Social engineering
+Chrome cookie stealer leveraging Phantom Persistence, CDP and Social engineering
 
 # Demo
 
