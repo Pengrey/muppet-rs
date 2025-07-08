@@ -1,0 +1,14 @@
+[package]
+name = "muppet"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+futures = "0.3"
+junction = "1.2.0"
+async-std = "1.13.1"
+chromiumoxide = { git = "https://github.com/mattsse/chromiumoxide", branch = "main"}
+phantom_persist_rs = { git = "https://github.com/Teach2Breach/phantom_persist_rs.git", branch = "main" }
+
+[features]
+debug = []
