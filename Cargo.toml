@@ -9,6 +9,19 @@ junction = "1.2.0"
 async-std = "1.13.1"
 chromiumoxide = { git = "https://github.com/mattsse/chromiumoxide", branch = "main"}
 mslnk = "0.1.8"
+widestring = "1.1.0"
+windows = { version = "0.60.0", features = [
+    "Wdk",
+    "Wdk_Storage",
+    "Wdk_Storage_FileSystem",
+    "Win32_Storage",
+    "Win32_Storage_FileSystem",
+    "Win32_Security",
+    "Win32_System",
+    "Win32_System_Memory",
+    "Win32_System_IO",
+    "Win32_UI_Shell"
+] }
 
 [features]
 debug = []
