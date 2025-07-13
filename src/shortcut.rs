@@ -2,7 +2,6 @@ use mslnk::ShellLink;
 use std::path::PathBuf;
 
 pub fn spoof_lnk(username: &str) -> Result<(), Box<dyn std::error::Error>> {
-
     let exe_path = std::env::current_exe()?;
     let start_in = exe_path.parent()
         .ok_or("Failed to get parent directory of the executable")?;

