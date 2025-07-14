@@ -2,14 +2,19 @@
 name = "muppet"
 version = "0.1.0"
 edition = "2024"
+build = "build.rs"
 
 [dependencies]
 futures = "0.3"
 junction = "1.2.0"
-async-std = "1.13.1"
-chromiumoxide = { git = "https://github.com/mattsse/chromiumoxide", branch = "main"}
 mslnk = "0.1.8"
+tokio = { version = "1", features = ["full"] }
+chromiumoxide = { git = "https://github.com/mattsse/chromiumoxide", features = ["tokio-runtime"], default-features = false, branch = "main"}
 selfdeletion = { git = "https://github.com/Pengrey/selfdeletion-rs.git", branch = "main" }
+
+[build-dependencies]
+toml = "0.8"
+serde = { version = "1.0", features = ["derive"] }
 
 [features]
 debug = []
