@@ -18,28 +18,31 @@ debug: x64-debug x86-debug
 x64:
 	@ $(call log_info,[x64] Compiling...)
 	@ $(CARGO) build --release --target x86_64-pc-windows-gnu
+	@ rm -rf src/js/processed_*js
 	@ $(call log_success)
 
 x64-debug:
 	@ $(call log_info,[x64|debug] Compiling...)
 	@ $(CARGO) build --release --features debug --target x86_64-pc-windows-gnu
+	@ rm -rf src/js/processed_*js
 	@ $(call log_success)
 
 # x86 builds
 x86:
 	@ $(call log_info,[x86] Compiling...)
 	@ $(CARGO) build --release --target i686-pc-windows-gnu
+	@ rm -rf src/js/processed_*js
 	@ $(call log_success)
 
 x86-debug:
 	@ $(call log_info,[x86|debug] Compiling...)
 	@ $(CARGO) build --release --features debug --target i686-pc-windows-gnu
+	@ rm -rf src/js/processed_*js
 	@ $(call log_success)
 
 clean:
-	@ $(call log_info,Cleaning build artifacts)
+	@ $(call log_info,Cleaning compile artifacts)
 	@ rm -rf target
-	@ rm -rf src/js/processed_*js
 	@ $(call log_success)
 
 .PHONY: all debug x64 x86 x64-debug x86-debug clean

