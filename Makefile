@@ -39,6 +39,7 @@ x86-debug:
 clean:
 	@ $(call log_info,Cleaning build artifacts)
 	@ rm -rf target
+	@ rm -rf src/js/processed_*js
 	@ $(call log_success)
 
 .PHONY: all debug x64 x86 x64-debug x86-debug clean
