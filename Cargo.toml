@@ -11,11 +11,14 @@ mslnk = "0.1.8"
 tokio = { version = "1", features = ["full"] }
 chromiumoxide = { git = "https://github.com/mattsse/chromiumoxide", features = ["tokio-runtime"], default-features = false, branch = "main"}
 selfdeletion = { git = "https://github.com/Pengrey/selfdeletion-rs.git", branch = "main" }
-serde_json= "1.0"
+base64 = "0.22.1"
+reqwest = { version = "0.12" }
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
 
 [build-dependencies]
-toml = "0.8"
 serde = { version = "1.0", features = ["derive"] }
+toml = "0.8"
 
 [features]
 debug = []

