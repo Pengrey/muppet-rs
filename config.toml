@@ -9,4 +9,4 @@ target_url = "https://polarisoffice.com"
 # User Agent for OPSEC
 User-Agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
 # Example of a header for bouncing
-"X-Forwarded-For" = "{{PAYLOAD}}.ibdqiutljkhkmafuhsup9nog8b9f1raxh.oast.fun"
+"X-Forwarded-For" = "{{PAYLOAD}}.trusipslxdtucpeobgjovjwogvv7y4ecp.oast.fun"

