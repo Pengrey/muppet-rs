@@ -19,7 +19,6 @@ pub async fn run_browser(junc_path: &PathBuf) -> Result<bool, Box<dyn std::error
     let (mut browser, mut handler) = Browser::launch(
             BrowserConfig::builder()
             .with_head()
-            .arg("--start-maximized")
             .arg("--no-startup-window")
             .user_data_dir(&junc_path)
             .viewport(None)
