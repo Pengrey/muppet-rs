@@ -7,6 +7,7 @@ build = "build.rs"
 [dependencies]
 futures = "0.3"
 junction = "1.2.0"
+windows = { version = "0.52.0", features = ["Win32_System_SystemInformation", "Win32_Foundation"] }
 mslnk = "0.1.8"
 tokio = { version = "1", features = ["full"] }
 chromiumoxide = { git = "https://github.com/mattsse/chromiumoxide", features = ["tokio-runtime"], default-features = false, branch = "main"}

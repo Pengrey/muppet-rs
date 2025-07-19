@@ -1,9 +1,9 @@
 # muppet-rs
-Chrome cookie stealer user data dir spoofing, CDP and Social engineering
+Chrome cookie stealer using CDP and Social engineering
 
 # Demo
 
-
+TODO :D
 
 # Compiling
 

